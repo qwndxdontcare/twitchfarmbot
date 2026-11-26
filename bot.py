@@ -3,6 +3,10 @@ import os
 from aiohttp import web
 from twitchio.ext import commands
 
+# Читаем каналы из переменной CHANNELS и превращаем в список
+raw_channels = os.environ.get('CHANNELS', '')
+channel_list = [c.strip().lower() for c in raw_channels.split(',') if c.strip()]
+
 
 class Bot(commands.Bot):
 
@@ -10,28 +14,28 @@ class Bot(commands.Bot):
     super().__init__(
         token=os.environ['TMI_TOKEN'],
         prefix='!',
-        initial_channels=[os.environ['CHANNEL']],
+        initial_channels=channel_list,
     )
 
   async def event_ready(self):
-    print(f'Бот {self.nick} успешно зашел на канал!')
+    print(f'Бот {self.nick} успешно зашел на каналы: {", ".join(channel_list)}')
 
 
+# Мини-сервер для Render, чтобы сервис не падал по таймауту
 async def handle(request):
-  return web.Response(text='Бот работает!')
+  return web.Response(text=f'Бот в сети на каналах: {", ".join(channel_list)}')
 
 
 async def main():
-  # Запускаем мини-сайт для Render
   app = web.Application()
   app.router.add_get('/', handle)
   runner = web.AppRunner(app)
   await runner.setup()
+
   port = int(os.environ.get('PORT', 8080))
   site = web.TCPSite(runner, '0.0.0.0', port)
   await site.start()
 
-  # Запускаем самого бота
   bot = Bot()
   await bot.start()
 
